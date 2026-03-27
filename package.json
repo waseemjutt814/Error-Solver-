@@ -1,0 +1,31 @@
+{
+  "name": "error-solver",
+  "version": "1.0.0",
+  "description": "Open source code flow analyzer — detect broken connections, missing files, duplicates, and orphans in numbered file pipelines. Beginner-friendly, zero dependencies.",
+  "main": "checker.js",
+  "scripts": {
+    "audit": "ts-node --project .error-solver/tsconfig.json .error-solver/engine/010_CLI_009toEND.ts check",
+    "dashboard": "echo Open .error-solver/dashboard/index.html in your browser!"
+  },
+  "keywords": [
+    "error-solver",
+    "code-flow",
+    "file-analyzer",
+    "connectivity-checker",
+    "pipeline",
+    "debugging",
+    "audit",
+    "open-source"
+  ],
+  "author": "Waseem Akram",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2"
+  }
+}

@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error Solver — Code Flow Dashboard</title>
+  <meta name="description" content="Visual dashboard for analyzing code flow, detecting broken connections, missing files, duplicates, and orphans in numbered file pipelines.">
+  <style>
+    /* ═══════════════════════════════════════════════
+       DESIGN SYSTEM
+       ═══════════════════════════════════════════════ */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --bg-glass: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(255, 255, 255, 0.12);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-dim: #64748b;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-orange: #f97316;
+      --accent-yellow: #eab308;
+      --accent-pink: #ec4899;
+      --glow-blue: rgba(59, 130, 246, 0.15);
+      --glow-green: rgba(16, 185, 129, 0.15);
+      --glow-red: rgba(239, 68, 68, 0.15);
+      --glow-orange: rgba(249, 115, 22, 0.15);
+      --glow-purple: rgba(139, 92, 246, 0.15);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── ANIMATED BACKGROUND ────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── HEADER ─────────────────────────────── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 14, 26, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* ─── BUTTONS ────────────────────────────── */
+    .btn {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-glass);
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border: none;
+      color: white;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    /* ─── STATS BAR ──────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      padding: 20px 32px;
+      position: relative;
+      z-index: 1;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      flex: 1;
+      min-width: 160px;
+      background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      transition: var(--transition);
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-card .sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .stat-card.total .value { color: var(--accent-blue); }
+    .stat-card.ok .value { color: var(--accent-green); }
+    .stat-card.errors .value { color: var(--accent-red); }
+    .stat-card.warnings .value { color: var(--accent-orange); }
+    .stat-card.orphans .value { color: var(--accent-yellow); }
+    .stat-card.dupes .value { color: var(--accent-pink); }
+
+    /* ─── MAIN CONTENT ───────────────────────── */
+    .main {
+      display: flex;
+      gap: 20px;
+      padding: 0 32px 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ─── GRAPH AREA ─────────────────────────── */
+    .graph-container {
+      flex: 1;
+      background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      min-height: 500px;
+      position: relative;
+    }
+
+    .graph-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .graph-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .graph-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .graph-controls button {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-glass);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: var(--transition);
+    }
+
+    .graph-controls button:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+    }
+
+    #graph-canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 460px;
+      cursor: grab;
+    }
+
+    #graph-canvas:active {
+      cursor: grabbing;
+    }
+
+    /* ─── SIDEBAR ────────────────────────────── */
+    .sidebar {
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-body {
+      padding: 12px 16px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .panel-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    /* ─── FILE LIST ITEMS ────────────────────── */
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: 4px;
+    }
+
+    .file-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .file-item.selected {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .file-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .file-dot.active { background: var(--accent-green); box-shadow: 0 0 8px var(--glow-green); }
+    .file-dot.broken { background: var(--accent-red); box-shadow: 0 0 8px var(--glow-red); }
+    .file-dot.orphan { background: var(--accent-orange); box-shadow: 0 0 8px var(--glow-orange); }
+    .file-dot.duplicate { background: var(--accent-pink); box-shadow: 0 0 8px rgba(236, 72, 153, 0.15); }
+
+    .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-meta {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .file-id {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    /* ─── DETAIL PANEL ───────────────────────── */
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      color: var(--text-primary);
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .detail-value.green { color: var(--accent-green); }
+    .detail-value.red { color: var(--accent-red); }
+    .detail-value.orange { color: var(--accent-orange); }
+
+    .connection-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      margin: 2px;
+    }
+
+    .connection-badge.from {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: var(--accent-green);
+    }
+
+    .connection-badge.to {
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      color: var(--accent-purple);
+    }
+
+    /* ─── ISSUES LIST ────────────────────────── */
+    .issue-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .issue-item.error {
+      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      color: var(--accent-red);
+    }
+
+    .issue-item.warning {
+      background: rgba(249, 115, 22, 0.05);
+      border: 1px solid rgba(249, 115, 22, 0.1);
+      color: var(--accent-orange);
+    }
+
+    .issue-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ─── DROP ZONE ──────────────────────────── */
+    .drop-zone {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10, 14, 26, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .drop-zone.visible {
+      display: flex;
+    }
+
+    .drop-zone-box {
+      width: 400px;
+      height: 250px;
+      border: 2px dashed var(--accent-blue);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(59, 130, 246, 0.05);
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: var(--accent-blue); }
+      50% { border-color: var(--accent-purple); }
+    }
+
+    .drop-zone-box .icon {
+      font-size: 48px;
+    }
+
+    .drop-zone-box p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* ─── EMPTY STATE ────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 400px;
+      gap: 16px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-dim);
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    .empty-state .or {
+      color: var(--text-dim);
+      font-size: 12px;
+      margin: 4px 0;
+    }
+
+    /* ─── TOAST ───────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 10000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--accent-green);
+    }
+
+    .toast.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--accent-red);
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────── */
+    @media (max-width: 900px) {
+      .main {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+      }
+      .stats-bar {
+        padding: 16px;
+      }
+      .header {
+        padding: 12px 16px;
+      }
+      .main {
+        padding: 0 16px 16px;
+      }
+    }
+
+    /* ─── ANIMATIONS ─────────────────────────── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in {
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes nodeFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ HEADER ═══════════════════════════════ -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">🔗</div>
+      <div>
+        <h1>Error Solver</h1>
+        <div class="header-subtitle">Code Flow Dashboard — Open Source</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn" id="btn-load-file" onclick="document.getElementById('file-input').click()">
+        📂 Load registry.json
+      </button>
+      <input type="file" id="file-input" accept=".json" style="display:none">
+      <button class="btn" id="btn-demo" onclick="loadDemo()">
+        ⚡ Load Demo
+      </button>
+      <button class="btn btn-primary" id="btn-export" onclick="exportReport()" style="display:none">
+        📋 Export Report
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ STATS BAR ════════════════════════════ -->
+  <div class="stats-bar" id="stats-bar" style="display:none">
+    <div class="stat-card total">
+      <div class="label">Total Files</div>
+      <div class="value" id="stat-total">0</div>
+      <div class="sub">in registry</div>
+    </div>
+    <div class="stat-card ok">
+      <div class="label">Healthy</div>
+      <div class="value" id="stat-ok">0</div>
+      <div class="sub">connections OK</div>
+    </div>
+    <div class="stat-card errors">
+      <div class="label">Errors</div>
+      <div class="value" id="stat-errors">0</div>
+      <div class="sub">broken links</div>
+    </div>
+    <div class="stat-card warnings">
+      <div class="label">Warnings</div>
+      <div class="value" id="stat-warnings">0</div>
+      <div class="sub">needs attention</div>
+    </div>
+    <div class="stat-card orphans">
+      <div class="label">Orphans</div>
+      <div class="value" id="stat-orphans">0</div>
+      <div class="sub">isolated files</div>
+    </div>
+    <div class="stat-card dupes">
+      <div class="label">Duplicates</div>
+      <div class="value" id="stat-dupes">0</div>
+      <div class="sub">same ID</div>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN CONTENT ═════════════════════════ -->
+  <div class="main">
+    <!-- Graph -->
+    <div class="graph-container">
+      <div class="graph-header">
+        <h2 id="graph-title">📊 Flow Graph</h2>
+        <div class="graph-controls">
+          <button onclick="zoomIn()" title="Zoom In">+</button>
+          <button onclick="zoomOut()" title="Zoom Out">−</button>
+          <button onclick="resetView()" title="Reset">↺</button>
+        </div>
+      </div>
+      <!-- Empty state -->
+      <div class="empty-state" id="empty-state">
+        <div class="icon">📂</div>
+        <h3>Load Your Project</h3>
+        <p>Drop your <strong>registry.json</strong> file here or click the button above to load it. You can also try the demo to see how it works.</p>
+        <button class="btn btn-primary" onclick="loadDemo()">⚡ Try Demo</button>
+        <div class="or">or</div>
+        <button class="btn" onclick="document.getElementById('file-input').click()">📂 Load registry.json</button>
+      </div>
+      <!-- Canvas -->
+      <svg id="graph-canvas" style="display:none"></svg>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" style="display:none">
+      <!-- File List -->
+      <div class="panel">
+        <div class="panel-header">
+          📋 All Files
+          <span id="file-count-badge" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--accent-cyan)"></span>
+        </div>
+        <div class="panel-body" id="file-list"></div>
+      </div>
+
+      <!-- Selected File Details -->
+      <div class="panel" id="detail-panel" style="display:none">
+        <div class="panel-header">
+          🔍 File Details
+        </div>
+        <div class="panel-body" id="detail-body"></div>
+      </div>
+
+      <!-- Issues -->
+      <div class="panel" id="issues-panel" style="display:none">
+        <div class="panel-header">
+          ⚠️ Issues Found
+          <span id="issue-count" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--accent-red)"></span>
+        </div>
+        <div class="panel-body" id="issues-list"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ═══ DROP ZONE ════════════════════════════ -->
+  <div class="drop-zone" id="drop-zone">
+    <div class="drop-zone-box">
+      <div class="icon">📄</div>
+      <p>Drop <strong>registry.json</strong> here</p>
+    </div>
+  </div>
+
+  <!-- ═══ TOAST ════════════════════════════════ -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /* ═══════════════════════════════════════════
+       ERROR SOLVER DASHBOARD — JavaScript Engine
+       No dependencies. Pure vanilla JS.
+       Handles 5 to 5000+ files.
+       ═══════════════════════════════════════════ */
+
+    let registry = null;
+    let nodeMap = {};
+    let issues = [];
+    let selectedNode = null;
+    let viewBox = { x: -50, y: -50, w: 1200, h: 600 };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let scale = 1;
+
+    // ─── DEMO DATA ────────────────────────────
+    const DEMO_REGISTRY = {
+      project_name: "ErrorSolverDemo",
+      total_files: 5,
+      generated_at: new Date().toISOString(),
+      nodes: [
+        { id: "001", name: "Init", file: "001_Init_STARTto002.js", input: "START", output: "002", status: "active" },
+        { id: "002", name: "LoadConfig", file: "002_LoadConfig_001to003.js", input: "001", output: "003", status: "active" },
+        { id: "003", name: "ProcessData", file: "003_ProcessData_002to004.js", input: "002", output: "004", status: "active" },
+        { id: "004", name: "SaveResult", file: "004_SaveResult_003to005.js", input: "003", output: "005", status: "active" },
+        { id: "005", name: "Output", file: "005_Output_004toEND.js", input: "004", output: "END", status: "active" }
+      ]
+    };
+
+    // ─── FILE INPUT ───────────────────────────
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          loadRegistry(data);
+          showToast('✅ Registry loaded successfully!', 'success');
+        } catch (err) {
+          showToast('❌ Invalid JSON file!', 'error');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ─── DRAG & DROP ──────────────────────────
+    document.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.add('visible');
+    });
+
+    document.addEventListener('dragleave', (e) => {
+      if (!e.relatedTarget || e.relatedTarget === document.documentElement) {
+        document.getElementById('drop-zone').classList.remove('visible');
+      }
+    });
+
+    document.addEventListener('drop', (e) => {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.remove('visible');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          loadRegistry(data);
+          showToast('✅ Registry loaded!', 'success');
+        } catch (err) {
+          showToast('❌ Invalid JSON!', 'error');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ─── LOAD DEMO ────────────────────────────
+    function loadDemo() {
+      loadRegistry(DEMO_REGISTRY);
+      showToast('⚡ Demo loaded with 5 example files', 'success');
+    }
+
+    // ─── MAIN LOADER ──────────────────────────
+    function loadRegistry(data) {
+      registry = data;
+      nodeMap = {};
+      issues = [];
+      selectedNode = null;
+
+      registry.nodes.forEach(n => { nodeMap[n.id] = n; });
+
+      // Run all checks
+      runChecks();
+
+      // Show UI
+      document.getElementById('stats-bar').style.display = 'flex';
+      document.getElementById('sidebar').style.display = 'flex';
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('graph-canvas').style.display = 'block';
+      document.getElementById('btn-export').style.display = 'flex';
+
+      // Render
+      updateStats();
+      renderFileList();
+      renderIssues();
+      renderGraph();
+    }
+
+    // ─── CHECKS ───────────────────────────────
+    function runChecks() {
+      issues = [];
+      const nodeIds = new Set(registry.nodes.map(n => n.id));
+
+      // Check duplicates
+      const idCount = {};
+      registry.nodes.forEach(n => {
+        idCount[n.id] = (idCount[n.id] || 0) + 1;
+      });
+
+      Object.entries(idCount).forEach(([id, count]) => {
+        if (count > 1) {
+          issues.push({
+            type: 'error',
+            msg: `Duplicate ID "${id}" found ${count} times`,
+            nodeId: id
+          });
+          // Mark duplicates
+          registry.nodes.filter(n => n.id === id).forEach(n => n._status = 'duplicate');
+        }
+      });
+
+      // Check connections
+      registry.nodes.forEach(node => {
+        if (!node._status) node._status = 'active';
+
+        if (node.input !== 'START' && node.input !== 'MULT') {
+          const inputs = node.input.split(',').map(s => s.trim());
+          inputs.forEach(inp => {
+            if (!nodeIds.has(inp)) {
+              issues.push({
+                type: 'error',
+                msg: `[${node.id}] ${node.name}: input "${inp}" missing`,
+                nodeId: node.id
+              });
+              node._status = 'broken';
+            }
+          });
+        }
+
+        if (node.output !== 'END') {
+          const outputs = node.output.split(',').map(s => s.trim());
+          outputs.forEach(out => {
+            if (!nodeIds.has(out)) {
+              issues.push({
+                type: 'error',
+                msg: `[${node.id}] ${node.name}: output "${out}" missing`,
+                nodeId: node.id
+              });
+              node._status = 'broken';
+            }
+          });
+        }
+      });
+
+      // Check entry/exit
+      const starts = registry.nodes.filter(n => n.input === 'START');
+      const ends = registry.nodes.filter(n => n.output === 'END');
+
+      if (starts.length === 0) {
+        issues.push({ type: 'warning', msg: 'No entry point (START) found' });
+      }
+      if (ends.length === 0) {
+        issues.push({ type: 'warning', msg: 'No exit point (END) found' });
+      }
+
+      // Check isolated nodes (not referenced by anyone)
+      const referenced = new Set();
+      registry.nodes.forEach(node => {
+        if (node.input !== 'START' && node.input !== 'MULT') {
+          node.input.split(',').forEach(i => referenced.add(i.trim()));
+        }
+        if (node.output !== 'END') {
+          node.output.split(',').forEach(o => referenced.add(o.trim()));
+        }
+      });
+
+      registry.nodes.forEach(node => {
+        if (node.input !== 'START' && !referenced.has(node.id) && node._status === 'active') {
+          // Only if nobody references it as output
+          const isTarget = registry.nodes.some(n => {
+            if (n.output === 'END') return false;
+            return n.output.split(',').map(s=>s.trim()).includes(node.id);
+          });
+          if (!isTarget) {
+            issues.push({ type: 'warning', msg: `[${node.id}] ${node.name}: isolated — no file connects to it`, nodeId: node.id });
+            if (node._status === 'active') node._status = 'orphan';
+          }
+        }
+      });
+
+      // ID gap detection
+      const ids = registry.nodes.map(n => parseInt(n.id)).sort((a, b) => a - b);
+      for (let i = 1; i < ids.length; i++) {
+        if (ids[i] - ids[i - 1] > 1) {
+          for (let g = ids[i - 1] + 1; g < ids[i]; g++) {
+            issues.push({
+              type: 'warning',
+              msg: `Gap: ID "${String(g).padStart(3, '0')}" is missing in sequence`
+            });
+          }
+        }
+      }
+    }
+
+    // ─── UPDATE STATS ─────────────────────────
+    function updateStats() {
+      const total = registry.nodes.length;
+      const ok = registry.nodes.filter(n => n._status === 'active').length;
+      const errors = issues.filter(i => i.type === 'error').length;
+      const warnings = issues.filter(i => i.type === 'warning').length;
+      const orphans = registry.nodes.filter(n => n._status === 'orphan').length;
+      const dupes = registry.nodes.filter(n => n._status === 'duplicate').length;
+
+      animateCounter('stat-total', total);
+      animateCounter('stat-ok', ok);
+      animateCounter('stat-errors', errors);
+      animateCounter('stat-warnings', warnings);
+      animateCounter('stat-orphans', orphans);
+      animateCounter('stat-dupes', dupes);
+    }
+
+    function animateCounter(id, target) {
+      const el = document.getElementById(id);
+      let current = 0;
+      const step = Math.max(1, Math.floor(target / 20));
+      const interval = setInterval(() => {
+        current = Math.min(current + step, target);
+        el.textContent = current;
+        if (current >= target) clearInterval(interval);
+      }, 30);
+    }
+
+    // ─── RENDER FILE LIST ─────────────────────
+    function renderFileList() {
+      const list = document.getElementById('file-list');
+      document.getElementById('file-count-badge').textContent = `${registry.nodes.length} files`;
+
+      list.innerHTML = registry.nodes.map(node => `
+        <div class="file-item ${selectedNode === node.id ? 'selected' : ''}" onclick="selectNode('${node.id}')" id="file-item-${node.id}">
+          <div class="file-dot ${node._status || 'active'}"></div>
+          <div class="file-info">
+            <div class="file-name">${node.name}</div>
+            <div class="file-meta">${node.input} → ${node.id} → ${node.output}</div>
+          </div>
+          <div class="file-id">#${node.id}</div>
+        </div>
+      `).join('');
+    }
+
+    // ─── SELECT NODE ──────────────────────────
+    function selectNode(id) {
+      selectedNode = id;
+      const node = nodeMap[id];
+      if (!node) return;
+
+      // Update file list selection
+      document.querySelectorAll('.file-item').forEach(el => el.classList.remove('selected'));
+      const el = document.getElementById(`file-item-${id}`);
+      if (el) el.classList.add('selected');
+
+      // Show detail panel
+      const panel = document.getElementById('detail-panel');
+      panel.style.display = 'block';
+
+      const fromNode = nodeMap[node.input];
+      const toNode = nodeMap[node.output];
+
+      const fromDisplay = node.input === 'START' ? '🟢 START' :
+        node.input === 'MULT' ? '📥 MULTIPLE' :
+        fromNode ? `[${node.input}] ${fromNode.name}` : `❌ [${node.input}] MISSING`;
+
+      const toDisplay = node.output === 'END' ? '🔴 END' :
+        toNode ? `[${node.output}] ${toNode.name}` : `❌ [${node.output}] MISSING`;
+
+      const statusColor = node._status === 'active' ? 'green' : node._status === 'broken' ? 'red' : 'orange';
+
+      document.getElementById('detail-body').innerHTML = `
+        <div class="detail-row">
+          <span class="detail-label">ID</span>
+          <span class="detail-value">#${node.id}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Name</span>
+          <span class="detail-value">${node.name}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">File</span>
+          <span class="detail-value" style="font-size:9px">${node.file}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Status</span>
+          <span class="detail-value ${statusColor}">${(node._status || 'active').toUpperCase()}</span>
+        </div>
+        <div style="margin-top:8px;">
+          <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">← Comes FROM</div>
+          <span class="connection-badge from">${fromDisplay}</span>
+        </div>
+        <div style="margin-top:8px;">
+          <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">→ Goes TO</div>
+          <span class="connection-badge to">${toDisplay}</span>
+        </div>
+      `;
+
+      // Highlight in graph
+      highlightNode(id);
+    }
+
+    // ─── RENDER ISSUES ────────────────────────
+    function renderIssues() {
+      const panel = document.getElementById('issues-panel');
+      const list = document.getElementById('issues-list');
+
+      if (issues.length === 0) {
+        panel.style.display = 'block';
+        document.getElementById('issue-count').textContent = '0';
+        list.innerHTML = `
+          <div style="text-align:center; padding:16px; color:var(--accent-green); font-size:13px;">
+            ✅ No issues found!<br>
+            <span style="font-size:11px; color:var(--text-dim)">All connections are healthy.</span>
+          </div>
+        `;
+        return;
+      }
+
+      panel.style.display = 'block';
+      document.getElementById('issue-count').textContent = issues.length;
+
+      list.innerHTML = issues.map(issue => `
+        <div class="issue-item ${issue.type}" ${issue.nodeId ? `onclick="selectNode('${issue.nodeId}')" style="cursor:pointer"` : ''}>
+          <span class="issue-icon">${issue.type === 'error' ? '❌' : '⚠️'}</span>
+          <span>${issue.msg}</span>
+        </div>
+      `).join('');
+    }
+
+    // ─── RENDER GRAPH ─────────────────────────
+    function renderGraph() {
+      const svg = document.getElementById('graph-canvas');
+      const nodes = registry.nodes;
+      const count = nodes.length;
+
+      // Calculate layout
+      // For large files: grid layout
+      // For small files: single row
+      let positions = {};
+
+      if (count <= 15) {
+        // Single row with curves
+        const spacing = Math.max(160, 900 / count);
+        nodes.forEach((node, i) => {
+          positions[node.id] = {
+            x: 80 + i * spacing,
+            y: 200 + Math.sin(i * 0.5) * 30
+          };
+        });
+        viewBox = { x: -20, y: 50, w: Math.max(1000, count * spacing + 100), h: 400 };
+      } else {
+        // Grid layout for many files
+        const cols = Math.ceil(Math.sqrt(count * 2));
+        const rowH = 100;
+        const colW = 160;
+        nodes.forEach((node, i) => {
+          const row = Math.floor(i / cols);
+          const col = i % cols;
+          positions[node.id] = {
+            x: 80 + col * colW,
+            y: 80 + row * rowH
+          };
+        });
+        const totalRows = Math.ceil(count / cols);
+        viewBox = { x: -20, y: -20, w: cols * colW + 120, h: totalRows * rowH + 120 };
+      }
+
+      svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+
+      // Build SVG
+      let svgContent = '';
+
+      // Defs for arrow markers and gradients
+      svgContent += `
+        <defs>
+          <marker id="arrow-ok" viewBox="0 0 10 7" refX="10" refY="3.5"
+            markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 3.5 L 0 7 z" fill="#10b981" opacity="0.7"/>
+          </marker>
+          <marker id="arrow-broken" viewBox="0 0 10 7" refX="10" refY="3.5"
+            markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 3.5 L 0 7 z" fill="#ef4444" opacity="0.7"/>
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="shadow">
+            <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.3"/>
+          </filter>
+          <linearGradient id="grad-active" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#1e293b"/>
+            <stop offset="100%" stop-color="#0f172a"/>
+          </linearGradient>
+          <linearGradient id="grad-broken" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#1c1212"/>
+            <stop offset="100%" stop-color="#1a0a0a"/>
+          </linearGradient>
+        </defs>
+      `;
+
+      // Draw edges first (behind nodes)
+      nodes.forEach(node => {
+        if (node.output === 'END') return;
+        const outputs = node.output.split(',').map(s => s.trim());
+        outputs.forEach(outId => {
+          const from = positions[node.id];
+          const to = positions[outId];
+          if (!from || !to) return;
+
+          const isBroken = !nodeMap[outId];
+          const color = isBroken ? '#ef4444' : '#10b981';
+          const marker = isBroken ? 'url(#arrow-broken)' : 'url(#arrow-ok)';
+          const opacity = isBroken ? 0.5 : 0.4;
+
+          // Curved path
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const cx1 = from.x + dx * 0.4;
+          const cy1 = from.y;
+          const cx2 = to.x - dx * 0.4;
+          const cy2 = to.y;
+
+          svgContent += `
+            <path d="M ${from.x + 60} ${from.y + 20} C ${cx1 + 60} ${cy1 + 20}, ${cx2} ${cy2 + 20}, ${to.x} ${to.y + 20}"
+              fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity="${opacity}"
+              marker-end="${marker}" class="edge" data-from="${node.id}" data-to="${outId}"/>
+          `;
+        });
+      });
+
+      // Draw nodes
+      nodes.forEach(node => {
+        const pos = positions[node.id];
+        if (!pos) return;
+
+        const status = node._status || 'active';
+        const colors = {
+          active: { border: '#10b981', bg: 'url(#grad-active)', text: '#10b981', dot: '#10b981' },
+          broken: { border: '#ef4444', bg: 'url(#grad-broken)', text: '#ef4444', dot: '#ef4444' },
+          orphan: { border: '#f97316', bg: 'url(#grad-active)', text: '#f97316', dot: '#f97316' },
+          duplicate: { border: '#ec4899', bg: 'url(#grad-active)', text: '#ec4899', dot: '#ec4899' },
+        };
+        const c = colors[status] || colors.active;
+
+        svgContent += `
+          <g class="node" data-id="${node.id}" onclick="selectNode('${node.id}')" style="cursor:pointer">
+            <rect x="${pos.x}" y="${pos.y}" width="120" height="40" rx="8"
+              fill="${c.bg}" stroke="${c.border}" stroke-width="1.5" stroke-opacity="0.5"
+              filter="url(#shadow)"/>
+            <circle cx="${pos.x + 12}" cy="${pos.y + 20}" r="4" fill="${c.dot}" opacity="0.8"/>
+            <text x="${pos.x + 22}" y="${pos.y + 16}" font-size="9" fill="${c.text}" font-weight="700"
+              font-family="JetBrains Mono, monospace">#${node.id}</text>
+            <text x="${pos.x + 22}" y="${pos.y + 29}" font-size="10" fill="#e2e8f0" font-weight="500"
+              font-family="Inter, sans-serif">${node.name.length > 12 ? node.name.slice(0, 11) + '…' : node.name}</text>
+          </g>
+        `;
+      });
+
+      // START label
+      const startNodes = nodes.filter(n => n.input === 'START');
+      startNodes.forEach(sn => {
+        const pos = positions[sn.id];
+        if (!pos) return;
+        svgContent += `
+          <text x="${pos.x - 10}" y="${pos.y + 25}" font-size="10" fill="#10b981" font-weight="600"
+            font-family="Inter" text-anchor="end" opacity="0.7">START →</text>
+        `;
+      });
+
+      // END label
+      const endNodes = nodes.filter(n => n.output === 'END');
+      endNodes.forEach(en => {
+        const pos = positions[en.id];
+        if (!pos) return;
+        svgContent += `
+          <text x="${pos.x + 130}" y="${pos.y + 25}" font-size="10" fill="#ef4444" font-weight="600"
+            font-family="Inter" opacity="0.7">→ END</text>
+        `;
+      });
+
+      svg.innerHTML = svgContent;
+
+      // Setup panning
+      setupPanning(svg);
+    }
+
+    // ─── HIGHLIGHT NODE ───────────────────────
+    function highlightNode(id) {
+      // Reset all
+      document.querySelectorAll('.node rect').forEach(r => {
+        r.setAttribute('stroke-width', '1.5');
+      });
+      document.querySelectorAll('.edge').forEach(e => {
+        e.setAttribute('stroke-width', '1.5');
+      });
+
+      // Highlight selected
+      const nodeG = document.querySelector(`.node[data-id="${id}"]`);
+      if (nodeG) {
+        const rect = nodeG.querySelector('rect');
+        rect.setAttribute('stroke-width', '3');
+      }
+
+      // Highlight connected edges
+      document.querySelectorAll(`.edge[data-from="${id}"], .edge[data-to="${id}"]`).forEach(e => {
+        e.setAttribute('stroke-width', '3');
+        e.setAttribute('stroke-opacity', '0.9');
+      });
+    }
+
+    // ─── PANNING & ZOOMING ────────────────────
+    function setupPanning(svg) {
+      let startX, startY, startViewBox;
+
+      svg.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.node')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startViewBox = { ...viewBox };
+      });
+
+      svg.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = (e.clientX - startX) * (viewBox.w / svg.clientWidth);
+        const dy = (e.clientY - startY) * (viewBox.h / svg.clientHeight);
+        viewBox.x = startViewBox.x - dx;
+        viewBox.y = startViewBox.y - dy;
+        svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+      });
+
+      svg.addEventListener('mouseup', () => { isDragging = false; });
+      svg.addEventListener('mouseleave', () => { isDragging = false; });
+
+      svg.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+        const rect = svg.getBoundingClientRect();
+        const mx = ((e.clientX - rect.left) / rect.width) * viewBox.w + viewBox.x;
+        const my = ((e.clientY - rect.top) / rect.height) * viewBox.h + viewBox.y;
+
+        viewBox.w *= zoomFactor;
+        viewBox.h *= zoomFactor;
+        viewBox.x = mx - (mx - viewBox.x) * zoomFactor;
+        viewBox.y = my - (my - viewBox.y) * zoomFactor;
+
+        svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+      });
+    }
+
+    function zoomIn() {
+      viewBox.w *= 0.8;
+      viewBox.h *= 0.8;
+      viewBox.x += viewBox.w * 0.1;
+      viewBox.y += viewBox.h * 0.1;
+      document.getElementById('graph-canvas').setAttribute('viewBox',
+        `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+    }
+
+    function zoomOut() {
+      viewBox.x -= viewBox.w * 0.1;
+      viewBox.y -= viewBox.h * 0.1;
+      viewBox.w *= 1.2;
+      viewBox.h *= 1.2;
+      document.getElementById('graph-canvas').setAttribute('viewBox',
+        `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+    }
+
+    function resetView() {
+      if (registry) renderGraph();
+    }
+
+    // ─── EXPORT REPORT ────────────────────────
+    function exportReport() {
+      if (!registry) return;
+
+      let report = '';
+      report += '╔════════════════════════════════════════════════════╗\n';
+      report += '║     ERROR SOLVER — CONNECTION REPORT               ║\n';
+      report += '╚════════════════════════════════════════════════════╝\n\n';
+      report += `Project     : ${registry.project_name}\n`;
+      report += `Total Files : ${registry.nodes.length}\n`;
+      report += `Generated   : ${new Date().toISOString()}\n\n`;
+
+      report += '── FILE MAP ──────────────────────────────────────\n\n';
+
+      registry.nodes.forEach((node, i) => {
+        const fromNode = nodeMap[node.input];
+        const toNode = nodeMap[node.output];
+        const fromStr = node.input === 'START' ? 'START' :
+          node.input === 'MULT' ? 'MULTIPLE' :
+          fromNode ? `[${node.input}] ${fromNode.name}` : `[${node.input}] MISSING`;
+        const toStr = node.output === 'END' ? 'END' :
+          toNode ? `[${node.output}] ${toNode.name}` : `[${node.output}] MISSING`;
+
+        report += `  ${String(i + 1).padStart(3)}. [${node.id}] ${node.name}\n`;
+        report += `       File   : ${node.file}\n`;
+        report += `       Status : ${(node._status || 'active').toUpperCase()}\n`;
+        report += `       ← FROM : ${fromStr}\n`;
+        report += `       → TO   : ${toStr}\n\n`;
+      });
+
+      if (issues.length > 0) {
+        report += '── ISSUES ────────────────────────────────────────\n\n';
+        issues.forEach((issue, i) => {
+          const icon = issue.type === 'error' ? '❌' : '⚠️';
+          report += `  ${icon} ${issue.msg}\n`;
+        });
+      } else {
+        report += '── ✅ NO ISSUES FOUND ── All connections healthy!\n';
+      }
+
+      // Download
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `error-solver-report-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('📋 Report downloaded!', 'success');
+    }
+
+    // ─── TOAST ────────────────────────────────
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} visible`;
+      setTimeout(() => { toast.classList.remove('visible'); }, 3000);
+    }
+  </script>
+</body>
+</html>

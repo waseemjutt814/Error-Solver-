@@ -1,0 +1,37 @@
+╔════════════════════════════════════════════════════╗
+║        ERROR SOLVER - PROJECT REPORT               ║
+╚════════════════════════════════════════════════════╝
+
+Project     : error-solver
+Total Files : 5
+Generated   : 2026-03-27T02:12:20.759Z
+
+── FLOW ──────────────────────────────────────────
+  ✅ START → [001] Init → [002] LoadConfig → [003] ProcessData → [004] SaveResult → [005] Output → END
+
+── CONNECTION MAP ─────────────────────────────────
+
+    1. [001] Init
+       File   : 001_Init_STARTto002.js
+       ← FROM : START (entry point)
+       → TO   : [002] LoadConfig
+
+    2. [002] LoadConfig
+       File   : 002_LoadConfig_001to003.js
+       ← FROM : [001] Init
+       → TO   : [003] ProcessData
+
+    3. [003] ProcessData
+       File   : 003_ProcessData_002to004.js
+       ← FROM : [002] LoadConfig
+       → TO   : [004] SaveResult
+
+    4. [004] SaveResult
+       File   : 004_SaveResult_003to005.js
+       ← FROM : [003] ProcessData
+       → TO   : [005] Output
+
+    5. [005] Output
+       File   : 005_Output_004toEND.js
+       ← FROM : [004] SaveResult
+       → TO   : END (exit point)
