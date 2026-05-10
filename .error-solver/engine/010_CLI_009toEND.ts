@@ -8,8 +8,6 @@ import { archiveOrphans, findIsolated, findMissing, findOrphans } from "./007_Or
 import { buildConnectionMap, traceFlows } from "./008_FlowTracer_007to009";
 import { header, logERR, logINFO, logOK, logWARN, printReport, saveTextReport } from "./009_ReportGenerator_008to010";
 
-// ─── COMMAND ROUTING USING EXHAUSTIVE TYPE ──────────────────────────────────
-
 type CLICommand = "build" | "check" | "archive" | "report" | "full" | "help";
 
 function parseCommand(cmd: string | undefined): CLICommand {
@@ -26,10 +24,8 @@ function parseCommand(cmd: string | undefined): CLICommand {
   }
 }
 
-// ─── COMMAND IMPLEMENTATIONS ────────────────────────────────────────────────
-
 function cmdBuild(): void {
-  console.log(`\n${C.bold}${C.magenta}  🔧 ERROR SOLVER ENGINE (TS) v2.0.0${C.reset}\n`);
+  console.log(`\n${C.bold}${C.magenta}  ERROR SOLVER ENGINE v2.0.0${C.reset}\n`);
   header("Building Registry from src/ files");
 
   const scanResult = scanSourceFiles();
@@ -43,12 +39,12 @@ function cmdBuild(): void {
   logINFO(`Found ${files.length} source files`);
 
   const { nodes, unparsed } = parseAllFiles(files);
-  nodes.forEach((n) => logOK(`[${n.id}] ${n.name} — ${n.input} → ${n.output}`));
-  unparsed.forEach((f) => logWARN(`Could not parse: ${f}`));
+  nodes.forEach((node) => logOK(`[${node.id}] ${node.name} - ${node.input} -> ${node.output}`));
+  unparsed.forEach((file) => logWARN(`Could not parse: ${file}`));
 
   const registry = buildRegistry(nodes);
   const saveRes = saveRegistry(registry);
-  
+
   if (!saveRes.ok) {
     logERR(saveRes.error);
     process.exit(1);
@@ -59,26 +55,16 @@ function cmdBuild(): void {
 
   const gaps = detectGaps(nodes);
   if (gaps.length === 0) {
-    logOK("No ID gaps — numbering is sequential");
+    logOK("No ID gaps; numbering is sequential");
   } else {
-    gaps.forEach((g) => logWARN(`Gap: missing ID ${g}`));
+    gaps.forEach((gap) => logWARN(`Gap: missing ID ${gap}`));
   }
-
-  console.log(`\n  ${C.bold}${C.green}✅ Done! Run: npm run tool:check${C.reset}\n`);
 }
 
 function cmdCheck(): void {
-  console.log(`\n${C.bold}${C.magenta}  🔍 ERROR SOLVER CHECKER (TS) v2.0.0${C.reset}`);
-  console.log(`  ${C.dim}Scanning your project for errors...${C.reset}`);
+  console.log(`\n${C.bold}${C.magenta}  ERROR SOLVER CHECKER v2.0.0${C.reset}`);
+  console.log(`  ${C.dim}Scanning your project for code-flow problems...${C.reset}`);
   header("Full Audit Report");
-
-  const regResult = loadRegistry();
-  if (!regResult.ok) {
-    logERR(regResult.error);
-    process.exit(1);
-    return;
-  }
-  const registry = regResult.data;
 
   const scanResult = scanSourceFiles();
   if (!scanResult.ok) {
@@ -86,9 +72,13 @@ function cmdCheck(): void {
     process.exit(1);
     return;
   }
-  const diskFiles = scanResult.data;
 
-  // Run ALL pipelines
+  const diskFiles = scanResult.data;
+  const { nodes, unparsed } = parseAllFiles(diskFiles);
+  const registry = buildRegistry(nodes);
+
+  unparsed.forEach((file) => logWARN(`Ignored because it does not match the naming convention: ${file}`));
+
   const connectivity = checkConnectivity(registry.nodes);
   const duplicates = findDuplicates(registry.nodes);
   const orphans = findOrphans(registry.nodes, diskFiles);
@@ -98,8 +88,7 @@ function cmdCheck(): void {
   const flows = traceFlows(registry.nodes);
   const connectionMap = buildConnectionMap(registry.nodes);
 
-  // Print
-  printReport({
+  const result = printReport({
     registry,
     diskFiles,
     connectivity,
@@ -111,10 +100,14 @@ function cmdCheck(): void {
     flows,
     connectionMap,
   });
+
+  if (result.errors > 0) {
+    process.exit(1);
+  }
 }
 
 function cmdArchive(): void {
-  console.log(`\n${C.bold}${C.magenta}  📦 ARCHIVING ORPHAN FILES${C.reset}\n`);
+  console.log(`\n${C.bold}${C.magenta}  ARCHIVING ORPHAN FILES${C.reset}\n`);
 
   const regResult = loadRegistry();
   if (!regResult.ok) {
@@ -138,15 +131,15 @@ function cmdArchive(): void {
     const arcResult = archiveOrphans(orphans);
     if (!arcResult.ok) {
       logERR(arcResult.error);
-    } else {
-      logOK(`Archived ${arcResult.data} orphan file(s) to archive/`);
+      process.exit(1);
+      return;
     }
+    logOK(`Archived ${arcResult.data} orphan file(s) to archive/`);
   }
-  console.log("");
 }
 
 function cmdReport(): void {
-  console.log(`\n${C.bold}${C.magenta}  📝 GENERATING TEXT REPORT${C.reset}\n`);
+  console.log(`\n${C.bold}${C.magenta}  GENERATING TEXT REPORT${C.reset}\n`);
 
   const regResult = loadRegistry();
   if (!regResult.ok) {
@@ -162,41 +155,38 @@ function cmdReport(): void {
   const repResult = saveTextReport({ registry, flows, connectionMap });
   if (!repResult.ok) {
     logERR(repResult.error);
-  } else {
-    logOK("Report saved to report.txt");
+    process.exit(1);
+    return;
   }
-  console.log("");
+  logOK("Report saved to report.txt");
 }
 
 function cmdFull(): void {
   cmdBuild();
-  console.log("\n" + "─".repeat(60) + "\n");
+  console.log("\n" + "-".repeat(60) + "\n");
   cmdCheck();
-  console.log("\n" + "─".repeat(60) + "\n");
+  console.log("\n" + "-".repeat(60) + "\n");
   cmdReport();
 }
 
 function showHelp(): void {
   console.log(`
-${C.bold}${C.cyan}  🔗 ERROR SOLVER (TS) v2.0.0${C.reset}
-  ${C.dim}God-Tier Code Flow Analyzer${C.reset}
+${C.bold}${C.cyan}  ERROR SOLVER v2.0.0${C.reset}
+  ${C.dim}Code-flow analyzer for numbered source pipelines${C.reset}
 
   ${C.bold}Usage:${C.reset}
     npm run tool:<command>
 
   ${C.bold}Commands:${C.reset}
-    ${C.green}build${C.reset}     Scan src/ and create registry.json
-    ${C.green}check${C.reset}     Run full audit (7 checks)
-    ${C.green}archive${C.reset}   Move orphan files to archive/
-    ${C.green}report${C.reset}    Generate text report
-    ${C.green}full${C.reset}      Run everything: build + check + report
-  `);
+    ${C.green}build${C.reset}     Scan src/ and write registry.json
+    ${C.green}check${C.reset}     Run a live audit without mutating registry.json
+    ${C.green}archive${C.reset}   Copy orphan files to archive/
+    ${C.green}report${C.reset}    Generate report.txt from registry.json
+    ${C.green}full${C.reset}      Run build + check + report
+`);
 }
 
-// ─── EXHAUSTIVE ROUTER ──────────────────────────────────────────────────────
-
-const commandInput = process.argv[2];
-const command = parseCommand(commandInput);
+const command = parseCommand(process.argv[2]);
 
 switch (command) {
   case "build":
@@ -218,8 +208,7 @@ switch (command) {
     showHelp();
     break;
   default: {
-    // This block ensures Exhuastive pattern matching.
-    const _exhaustiveCheck: never = command;
-    throw new Error(`Unhandled command routing: ${_exhaustiveCheck}`);
+    const exhaustive: never = command;
+    throw new Error(`Unhandled command: ${exhaustive}`);
   }
 }

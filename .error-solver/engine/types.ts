@@ -1,24 +1,14 @@
 /**
- * =============================================
- * ERROR SOLVER - GOD TIER TYPES
- * =============================================
- * This file contains the domain language of the system.
- * We use Branded Types to ensure IDs and Strings are never mixed up.
- * We use Result<T,E> to handle errors gracefully without throwing.
+ * Error Solver domain types.
  */
-
-// ─── BRANDED TYPES ──────────────────────────────────────────────────────────
 
 export type NodeId = string & { readonly __brand: "NodeId" };
 export type FilePath = string & { readonly __brand: "FilePath" };
 export type IsoDateString = string & { readonly __brand: "IsoDateString" };
 
-// Safe constructors
 export const NodeId = (id: string): NodeId => id as NodeId;
 export const FilePath = (path: string): FilePath => path as FilePath;
 export const IsoDateString = (date: string): IsoDateString => date as IsoDateString;
-
-// ─── RESULT TYPE PATTERN ────────────────────────────────────────────────────
 
 export type Result<T, E = Error> =
   | { readonly ok: true; readonly data: T }
@@ -27,8 +17,6 @@ export type Result<T, E = Error> =
 export const ok = <T>(data: T): Result<T, never> => ({ ok: true, data });
 export const err = <E>(error: E): Result<never, E> => ({ ok: false, error });
 
-// ─── DOMAIN TYPES ───────────────────────────────────────────────────────────
-
 export type NodeKind = "middle" | "start" | "end" | "multiple";
 export type NodeStatus = "active" | "broken" | "orphan" | "duplicate";
 
@@ -36,8 +24,8 @@ export type NodeRecord = Readonly<{
   id: NodeId;
   name: string;
   file: FilePath;
-  input: string; // "START", "MULT", or comma-separated NodeIds
-  output: string; // "END" or comma-separated NodeIds
+  input: string;
+  output: string;
   kind: NodeKind;
   status: NodeStatus;
 }>;
@@ -48,8 +36,6 @@ export type Registry = Readonly<{
   generated_at: IsoDateString;
   nodes: ReadonlyArray<NodeRecord>;
 }>;
-
-// ─── AUDIT TYPES ────────────────────────────────────────────────────────────
 
 export type Config = Readonly<{
   rootDir: FilePath;

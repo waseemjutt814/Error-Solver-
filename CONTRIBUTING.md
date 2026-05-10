@@ -1,18 +1,30 @@
-# Contributing to the Project
+# Contributing
 
-First off, thank you for considering contributing! It's people like you that make open source such a great community.
+Thanks for improving Error Solver. Contributions should keep the project small, readable, and useful as a template.
 
-## Where do I go from here?
+## Development Setup
 
-If you've noticed a bug or have a feature request, make sure to check our Issues first. If you don't see it, feel free to create one!
+```bash
+npm install
+npm run audit
+```
 
-## Fork & create a pull request
+## Contribution Rules
 
-1. Fork the repo and create your branch from main.
-2. If you've added code that should be tested, add tests.
-3. If you've changed APIs, update the documentation.
-4. Ensure the test suite passes.
-5. Issue that pull request!
+- Keep the analyzer dependency-light.
+- Keep `src/` as the user workspace.
+- Keep `.error-solver/engine/` focused on flow analysis.
+- Update `README.md` and `USER_MANUAL.md` when commands or behavior change.
+- Do not commit local secrets, logs, generated caches, or `node_modules/`.
+- Prefer clear TypeScript types over broad `any`.
 
-## Code of Conduct
-Please note that this project is released with a Contributor Code of Conduct. By participating in this project you agree to abide by its terms.
+## Pull Request Checklist
+
+- `npm run audit` passes.
+- Relevant docs are updated.
+- GitHub metadata and package metadata remain accurate.
+- New behavior is described with an example when useful.
+
+## Security
+
+Please do not report vulnerabilities in public issues. Follow [SECURITY.md](SECURITY.md).

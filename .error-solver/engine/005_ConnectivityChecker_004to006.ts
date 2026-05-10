@@ -6,10 +6,6 @@ export type ConnectivityResult = Readonly<{
   brokenLinks: ReadonlyArray<ConnectionIssue>;
 }>;
 
-/**
- * Check all connections in registry nodes
- * Pure function: compares expected IDs against actual keys
- */
 export function checkConnectivity(nodes: ReadonlyArray<NodeRecord>): ConnectivityResult {
   const validIds = new Set<NodeId>(nodes.map((n) => n.id));
   const brokenLinks: ConnectionIssue[] = [];
@@ -18,7 +14,6 @@ export function checkConnectivity(nodes: ReadonlyArray<NodeRecord>): Connectivit
   for (const node of nodes) {
     let nodeHasBrokenLink = false;
 
-    // Validate Input
     if (!SPECIAL_INPUTS.includes(node.input)) {
       const inputs = node.input.split(",").map((s) => s.trim());
       for (const input of inputs) {
@@ -28,14 +23,13 @@ export function checkConnectivity(nodes: ReadonlyArray<NodeRecord>): Connectivit
             nodeName: node.name,
             direction: "input",
             target: input,
-            message: `[${node.id}] ${node.name} — input "${input}" does NOT exist`,
+            message: `[${node.id}] ${node.name} - input "${input}" does not exist`,
           });
           nodeHasBrokenLink = true;
         }
       }
     }
 
-    // Validate Output
     if (!SPECIAL_OUTPUTS.includes(node.output)) {
       const outputs = node.output.split(",").map((s) => s.trim());
       for (const output of outputs) {
@@ -45,7 +39,7 @@ export function checkConnectivity(nodes: ReadonlyArray<NodeRecord>): Connectivit
             nodeName: node.name,
             direction: "output",
             target: output,
-            message: `[${node.id}] ${node.name} — output "${output}" does NOT exist`,
+            message: `[${node.id}] ${node.name} - output "${output}" does not exist`,
           });
           nodeHasBrokenLink = true;
         }

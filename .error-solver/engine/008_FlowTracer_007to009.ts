@@ -7,9 +7,6 @@ export type FlowTraceResult = Readonly<{
   hasAnyLoop: boolean;
 }>;
 
-/**
- * Trace all flow paths from START to END
- */
 export function traceFlows(nodes: ReadonlyArray<NodeRecord>): FlowTraceResult {
   const nodeMap = new Map<NodeId, NodeRecord>();
   for (const n of nodes) {
@@ -18,7 +15,6 @@ export function traceFlows(nodes: ReadonlyArray<NodeRecord>): FlowTraceResult {
 
   const startNodes = nodes.filter((n) => n.input === "START");
   const endNodes = nodes.filter((n) => n.output === "END");
-
   const paths: FlowPath[] = [];
 
   for (const start of startNodes) {
@@ -38,19 +34,14 @@ export function traceFlows(nodes: ReadonlyArray<NodeRecord>): FlowTraceResult {
       visited.add(current.id);
       pathNodes.push({ id: current.id, name: current.name, status: "ok" });
 
-      if (current.output === "END") {
-        break;
-      }
+      if (current.output === "END") break;
 
-      const nextIdRaw = current.output.split(",")[0].trim();
-      const nextId = NodeId(nextIdRaw);
-
+      const nextId = NodeId(current.output.split(",")[0].trim());
       const nextNode = nodeMap.get(nextId);
       if (!nextNode) {
-        // Mutate the last node to show it's broken
         const lastIndex = pathNodes.length - 1;
         pathNodes[lastIndex] = { ...pathNodes[lastIndex], status: "broken" };
-        pathNodes.push({ id: nextId, name: "???", status: "missing" });
+        pathNodes.push({ id: nextId, name: "MISSING", status: "missing" });
         isBroken = true;
         break;
       }
@@ -75,9 +66,6 @@ export function traceFlows(nodes: ReadonlyArray<NodeRecord>): FlowTraceResult {
   };
 }
 
-/**
- * Build a connection map: for each node show FROM and TO
- */
 export function buildConnectionMap(nodes: ReadonlyArray<NodeRecord>): ReadonlyArray<ConnectionMapRow> {
   const nodeMap = new Map<NodeId, NodeRecord>();
   for (const n of nodes) {
@@ -94,9 +82,7 @@ export function buildConnectionMap(nodes: ReadonlyArray<NodeRecord>): ReadonlyAr
       fromDisplay = "MULTIPLE files";
     } else {
       const fromNode = nodeMap.get(NodeId(node.input));
-      fromDisplay = fromNode
-        ? `[${node.input}] ${fromNode.name}`
-        : `[${node.input}] ❌ MISSING`;
+      fromDisplay = fromNode ? `[${node.input}] ${fromNode.name}` : `[${node.input}] MISSING`;
     }
 
     let toDisplay = "";
@@ -104,9 +90,7 @@ export function buildConnectionMap(nodes: ReadonlyArray<NodeRecord>): ReadonlyAr
       toDisplay = "END (exit point)";
     } else {
       const toNode = nodeMap.get(NodeId(node.output));
-      toDisplay = toNode
-        ? `[${node.output}] ${toNode.name}`
-        : `[${node.output}] ❌ MISSING`;
+      toDisplay = toNode ? `[${node.output}] ${toNode.name}` : `[${node.output}] MISSING`;
     }
 
     mapRows.push({

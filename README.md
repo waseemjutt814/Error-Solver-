@@ -1,89 +1,144 @@
-# 🔗 Error Solver — Professional React Architecture
+# Error Solver
 
-**Created by Waseem Akram**
+Error Solver is a TypeScript code-flow analyzer for projects that use numbered source-file pipelines. It scans `src/`, parses filenames such as `001_LoginButton_STARTto002.tsx`, and reports broken links, duplicate IDs, orphaned files, missing endpoints, ID gaps, and incomplete START-to-END flows.
 
-> *A brilliantly simple, strictly-numbered file architecture that generates a visual map of your entire project. Keep your codebase 100% clean and instantly debuggable.*
+The tool is intentionally simple: your product code stays in `src/`, while the analyzer engine and dashboard live inside `.error-solver/`.
 
----
+## What It Solves
 
-## 🌟 The Philosophy
-In massive projects, figuring out "who calls what" takes hours. **Error Solver** fixes this by enforcing a strict, numbered file naming convention, giving you a **beautiful UI Dashboard** to visualize the whole flow automatically. 
+Large projects become difficult to debug when file relationships are implicit. Error Solver makes flow explicit through filenames, then audits those relationships before bugs reach runtime.
 
-**This repository is your empty workspace.** The complex engine is hidden away in `.error-solver/`, leaving your root folder perfectly clean and ready for your next React/Node project.
+It is useful for:
 
----
+- React, Next.js, Node, and TypeScript projects
+- tutorial or template projects that need readable architecture
+- beginner-friendly codebases where flow should be obvious
+- small teams that want a lightweight static architecture check
+- visualizing source pipelines without introducing a framework
 
-## 📂 Project Architecture
+## Core Features
 
-```
-my-next-big-app/
-│
-├── 📁 .error-solver/                 ← ⚙️ MAGIC ENGINE (Hidden)
-│   ├── engine/                       Waseem's 10/10 TypeScript Engine
-│   └── dashboard/                    The visual HTML frontend
-│
-├── 📁 src/                           ← 💻 YOUR ACTUAL CODE GOES HERE 
-│   ├── 01_components/                Reusable UI
-│   ├── 02_hooks/                     Custom React Hooks
-│   ├── 03_pages/                     Screens/Routes
-│   ├── 04_services/                  APIs and DB
-│   └── 05_utils/                     Helpers
-│
-├── package.json                      ← Just run `npm run audit`
-└── README.md                         ← You are here!
-```
+| Feature | Description |
+| --- | --- |
+| Recursive source scan | Reads supported files under `src/` and its subfolders |
+| Filename parser | Extracts ID, name, input, and output from strict file names |
+| Connectivity check | Detects inputs or outputs that point to missing IDs |
+| Duplicate detector | Finds repeated numeric IDs |
+| Orphan finder | Reports scanned files that do not map into the registry |
+| Gap detector | Finds missing numbers in a sequence |
+| Flow tracer | Walks START-to-END chains and detects broken paths or loops |
+| Dashboard | Ships a static HTML dashboard under `.error-solver/dashboard/` |
 
----
+## Naming Convention
 
-## 🚀 Quick Start
+Every source file that should participate in the flow must use this format:
 
-### Step 1: Write Code Inside `src/`
-Navigate to the `src/` folders and create your files. **Name them like this:**
-```
-[ID]_[Name]_[INPUT]to[OUTPUT].ts
-
-Example:
-001_LoginButton_STARTto002.tsx  ← Entry point (Button clicks)
-002_useAuth_001to003.ts         ← Middle logic
-003_AuthAPI_002toEND.ts         ← Exit point (Network request)
+```text
+[ID]_[Name]_[INPUT]to[OUTPUT].ext
 ```
 
-Each folder in `src/` has a `README.md` explaining typical naming conventions for that specific layer.
+Examples:
 
-### Step 2: Audit Your Pipeline
-Open your terminal at the root of the project:
+```text
+001_LoginButton_STARTto002.tsx
+002_useAuth_001to003.ts
+003_AuthAPI_002toEND.ts
+500_FormatDate_MULTtoMULT.ts
+```
+
+Meaning:
+
+| Token | Meaning |
+| --- | --- |
+| `001` | Unique file ID, minimum 3 digits |
+| `LoginButton` | Human-readable file role |
+| `START` | Entry point |
+| `END` | Exit point |
+| `MULT` | Shared file used by many nodes |
+| `001to003` | This file receives from `001` and sends to `003` |
+
+## Project Layout
+
+```text
+.error-solver/
+  engine/        TypeScript analyzer
+  dashboard/     Static visual dashboard
+src/
+  01_components/
+  02_hooks/
+  03_pages/
+  04_services/
+  05_utils/
+registry.json    Generated registry snapshot
+report.txt       Optional text report output
+```
+
+## Quick Start
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run a live audit:
+
 ```bash
 npm run audit
 ```
-This runs the hidden 8-point engine. It checks for:
-- ❌ Missing files
-- ❌ Orphaned/Abandoned code
-- ❌ ID duplicates (e.g. two `005`s)
-- ❌ Broken connections (e.g. `001` flows into `002` but `002` doesn't exist)
-- ✅ Prints a full connectivity map!
 
-### Step 3: Open the Dashboard 🪄
+Write or refresh `registry.json`:
+
+```bash
+npm run tool:build
+```
+
+Generate `report.txt` from `registry.json`:
+
+```bash
+npm run tool:report
+```
+
+Run the complete local workflow:
+
+```bash
+npm run tool:full
+```
+
+Open the dashboard:
+
 ```bash
 npm run dashboard
 ```
-This tells you exactly where the visual dashboard is located (`.error-solver/dashboard/index.html`). Double-click that file in your file explorer to see your entire project as an interactive graph!
 
----
+Then open:
 
-## 🎯 The "Language" of Error Solver
+```text
+.error-solver/dashboard/index.html
+```
 
-| Keyword | What it means | Example |
-|------|--------------|----------|
-| `001` | File ID (Must be 3+ digits) | `001`, `050`, `999` |
-| `START`| **Only** for origin points (clicks, server entry) | `001_Button_STARTto002.tsx` |
-| `END`  | **Only** for exit points (DB save, unmount) | `099_SaveDB_098toEND.ts` |
-| `MULT` | Used when MANY files connect | `050_Session_MULTtoMULT.ts` |
+## Commands
 
----
+| Command | Purpose |
+| --- | --- |
+| `npm run audit` | Live audit of the current `src/` tree |
+| `npm run test` | Alias for `npm run audit` |
+| `npm run tool:build` | Scan `src/` and write `registry.json` |
+| `npm run tool:check` | Run audit without mutating `registry.json` |
+| `npm run tool:archive` | Copy orphan files into `archive/` |
+| `npm run tool:report` | Generate `report.txt` from `registry.json` |
+| `npm run tool:full` | Build registry, check, and generate report |
 
-## 👨‍💻 About The Creator
+## Supported Source Extensions
 
-**Waseem Akram**  
-Built with a passion for clean, structured, and beginner-friendly code architecture. This template proves that you don't need messy roots or massive frameworks to have a world-class developer experience — just smart naming, a hidden engine, and a good plan!
+```text
+.js .ts .jsx .tsx .py .java .cpp .c .go .rs .rb .php .vue .svelte .dart
+```
 
-**License:** MIT — Free forever.
+## Current Template Status
+
+This repository is a starter template. The default `src/` folders contain README placeholders only, so `npm run audit` should pass even before application files are added. Once you add numbered source files, Error Solver begins enforcing the flow graph.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

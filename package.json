@@ -1,31 +1,48 @@
 {
   "name": "error-solver",
   "version": "1.0.0",
-  "description": "Open source code flow analyzer — detect broken connections, missing files, duplicates, and orphans in numbered file pipelines. Beginner-friendly, zero dependencies.",
-  "main": "checker.js",
+  "description": "Zero-dependency TypeScript code-flow analyzer for numbered source pipelines, broken links, duplicate IDs, and orphaned files.",
+  "private": true,
+  "type": "commonjs",
   "scripts": {
-    "audit": "ts-node --project .error-solver/tsconfig.json .error-solver/engine/010_CLI_009toEND.ts check",
-    "dashboard": "echo Open .error-solver/dashboard/index.html in your browser!"
+    "audit": "npm run tool:check",
+    "test": "npm run audit",
+    "tool:build": "ts-node --project .error-solver/tsconfig.json .error-solver/engine/010_CLI_009toEND.ts build",
+    "tool:check": "ts-node --project .error-solver/tsconfig.json .error-solver/engine/010_CLI_009toEND.ts check",
+    "tool:archive": "ts-node --project .error-solver/tsconfig.json .error-solver/engine/010_CLI_009toEND.ts archive",
+    "tool:report": "ts-node --project .error-solver/tsconfig.json .error-solver/engine/010_CLI_009toEND.ts report",
+    "tool:full": "ts-node --project .error-solver/tsconfig.json .error-solver/engine/010_CLI_009toEND.ts full",
+    "dashboard": "node -e \"console.log('Open .error-solver/dashboard/index.html in your browser.')\""
   },
   "keywords": [
-    "error-solver",
+    "agent-runtime",
+    "architecture",
+    "code-analysis",
     "code-flow",
-    "file-analyzer",
-    "connectivity-checker",
-    "pipeline",
     "debugging",
-    "audit",
-    "open-source"
+    "developer-tools",
+    "file-naming",
+    "graph",
+    "pipeline",
+    "static-analysis",
+    "typescript"
   ],
   "author": "Waseem Akram",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/waseemjutt814/Error-Solver-.git"
+  },
+  "bugs": {
+    "url": "https://github.com/waseemjutt814/Error-Solver-/issues"
+  },
+  "homepage": "https://github.com/waseemjutt814/Error-Solver-#readme",
+  "engines": {
+    "node": ">=20"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^22.19.17",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.2"
+    "typescript": "^5.9.3"
   }
 }
